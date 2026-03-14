@@ -1,15 +1,13 @@
 # rails-fixture-ls.nvim
 
-An in-process Neovim LSP server for Rails test fixtures. Provides completion,
-hover, and go-to-definition for fixture references in your test files.
-
-No external process needed. The server runs entirely as Lua inside your Neovim
-session using the in-process LSP pattern introduced in Neovim 0.11.
+An in-process Neovim LSP server for Rails test fixture completion, hover, and
+go-to-definition. Runs entirely as Lua inside your Neovim session with no
+external process.
 
 ## 📋 Requirements
 
 - **Neovim 0.11+**
-- Fixture files in `test/fixtures/` or `spec/fixtures/` (standard Rails locations)
+- Fixture files in `test/fixtures/` or `spec/fixtures/`
 
 ## 🛠️ Installation
 
@@ -30,52 +28,24 @@ Install via your preferred plugin manager. The following example uses [lazy.nvim
 
 All features are scoped to test files (paths containing `/test/` or `/spec/`).
 
-### Completion
-
-Type completions and name completions are triggered automatically as you type.
-
-| Trigger | Completion |
-|---|---|
-| `users` | Fixture type names derived from YAML filenames, inserts `users(` |
-| `users(:` | Individual fixture names (`:bob`, `:alice`) with YAML attribute preview |
-
-### Hover
-
-| Target | Result |
-|---|---|
-| `:bob` in `users(:bob)` | Floating window with the fixture's YAML attributes |
-| `users` in `users(:bob)` | Lists all available fixture names and the file path |
-
-### Go-to-Definition
-
-| Target | Result |
-|---|---|
-| `:bob` in `users(:bob)` | Jumps to the fixture entry in the YAML file |
-| `users` in `users(:bob)` | Jumps to the fixture YAML file |
-
-## ⚙️ Configuration
-
-No configuration is required. The server activates automatically for Ruby files
-in projects containing `test/fixtures/` or `spec/fixtures/`.
-
-The project root is detected by looking for `Gemfile`, `Rakefile`, or `.git`.
-If no fixture directory exists under the root, the server does not start.
+| Feature | On fixture name (`:bob`) | On fixture type (`users`) |
+|---|---|---|
+| **Completion** | Names with YAML attribute preview | Type names, inserts `users(` |
+| **Hover** | Fixture's YAML attributes | Available fixture names and file path |
+| **Go-to-definition** | Jumps to entry in YAML file | Jumps to YAML file |
 
 ## 🔍 How It Works
 
-This plugin uses Neovim's support for in-process LSP servers. Instead of
-spawning an external process, it passes a Lua function as the `cmd` parameter
-to `vim.lsp.start()`. That function returns a dispatch table implementing the
-LSP protocol entirely in Lua within your Neovim session.
+The server uses Neovim's in-process LSP support, passing a Lua function as the
+`cmd` parameter instead of spawning an external process. It only activates in
+projects that have a `test/fixtures/` or `spec/fixtures/` directory under the
+project root (`Gemfile`, `Rakefile`, or `.git`). If no fixture directory exists,
+the server does not start.
 
-The server only activates for Ruby files in projects that have a
-`test/fixtures/` or `spec/fixtures/` directory. If no fixture directory is
-found, the server does not start at all. Fixture data is cached per project
-root, so multi-project workspaces are fully supported.
-
-Fixture YAML files are parsed with simple pattern matching. Files using ERB
-(`.yml` with embedded `<%= %>` tags) work correctly since ERB only appears in
-attribute values, not fixture names.
+Fixture YAML files are parsed in a single pass with simple pattern matching.
+Data is cached per project root, so multi-project workspaces are fully
+supported. Files using ERB (`<%= %>` tags) work correctly since ERB only appears
+in attribute values, not fixture names.
 
 ## 🔧 Development
 
