@@ -1,0 +1,9 @@
+hello_world:
+  title: Hello World
+  body: This is my first post
+  user: alice
+
+draft_post:
+  title: Draft
+  body: Work in progress
+  user: bob

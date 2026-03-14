@@ -15,7 +15,7 @@ local capabilities = {
 --- @param line string
 --- @param col integer 0-indexed cursor column
 --- @return { type_name: string, fixture_name: string? }?
-local function parse_fixture_at_cursor(line, col)
+function M.parse_fixture_at_cursor(line, col)
   -- Expand from cursor to find the word boundary
   local left = col + 1
   while left > 1 and line:sub(left - 1, left - 1):match('[%w_]') do
@@ -149,7 +149,7 @@ function M.create(dispatchers)
       return callback(nil, nil)
     end
 
-    local ref = parse_fixture_at_cursor(line, params.position.character)
+    local ref = M.parse_fixture_at_cursor(line, params.position.character)
     if not ref then
       return callback(nil, nil)
     end
@@ -204,7 +204,7 @@ function M.create(dispatchers)
       return callback(nil, nil)
     end
 
-    local ref = parse_fixture_at_cursor(line, params.position.character)
+    local ref = M.parse_fixture_at_cursor(line, params.position.character)
     if not ref then
       return callback(nil, nil)
     end

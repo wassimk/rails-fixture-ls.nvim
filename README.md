@@ -82,9 +82,10 @@ attribute values, not fixture names.
 
 ## 🔧 Development
 
-Run lint:
+Run tests and lint:
 
 ```shell
+make test
 make lint
 ```
 

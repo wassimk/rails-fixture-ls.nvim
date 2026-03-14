@@ -1,0 +1,14 @@
+alice:
+  name: Alice Smith
+  email: alice@example.com
+  admin: false
+
+bob:
+  name: Bob Jones
+  email: bob@example.com
+  admin: true
+
+charlie:
+  name: Charlie Brown
+  email: charlie@example.com
+  admin: false

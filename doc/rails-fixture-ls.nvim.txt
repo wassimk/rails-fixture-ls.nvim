@@ -117,9 +117,10 @@ attribute values, not fixture names.
 
 П�� DEVELOPMENT*rails-fixture-ls.nvim-rails-fixture-ls.nvim-🔧-development*
 
-Run lint:
+Run tests and lint:
 
 >shell
+    make test
     make lint
 <
 
