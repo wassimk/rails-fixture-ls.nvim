@@ -17,7 +17,7 @@ local function get_cache(root_dir)
       files = nil,
       types = nil,
       type_to_file = nil,
-      names = {},
+      parsed = {},
     }
   end
   return _caches[root_dir]
@@ -32,7 +32,7 @@ function M.fixture_dirs(root_dir)
   local dirs = {}
   for _, dir_name in ipairs({ 'test', 'spec' }) do
     local fixture_dir = root_dir .. '/' .. dir_name .. '/fixtures'
-    if vim.fn.isdirectory(fixture_dir) == 1 then
+    if vim.uv.fs_stat(fixture_dir) then
       table.insert(dirs, fixture_dir)
     end
   end
@@ -49,12 +49,10 @@ function M.scan_files(root_dir)
 
   local files = {}
   for _, dir in ipairs(M.fixture_dirs(root_dir)) do
-    for _, ext in ipairs({ 'yml', 'yaml' }) do
-      local pattern = dir .. '/**/*.' .. ext
-      local found = vim.fn.glob(pattern, false, true)
-      for _, file in ipairs(found) do
-        table.insert(files, { path = file, dir = dir })
-      end
+    local pattern = dir .. '/**/*.{yml,yaml}'
+    local found = vim.fn.glob(pattern, false, true)
+    for _, file in ipairs(found) do
+      table.insert(files, { path = file, dir = dir })
     end
   end
 
@@ -62,10 +60,10 @@ function M.scan_files(root_dir)
   return files
 end
 
-function M.get_types(root_dir)
+local function ensure_types(root_dir)
   local cache = get_cache(root_dir)
-  if cache.types then
-    return cache.types
+  if cache.type_to_file then
+    return cache
   end
 
   local types = {}
@@ -85,7 +83,11 @@ function M.get_types(root_dir)
 
   cache.types = types
   cache.type_to_file = type_to_file
-  return types
+  return cache
+end
+
+function M.get_types(root_dir)
+  return ensure_types(root_dir).types
 end
 
 function M.valid_type(root_dir, type_name)
@@ -93,145 +95,133 @@ function M.valid_type(root_dir, type_name)
     return false
   end
 
-  local cache = get_cache(root_dir)
-  if not cache.type_to_file then
-    M.get_types(root_dir)
-    cache = get_cache(root_dir)
-  end
-
-  return cache.type_to_file[type_name] ~= nil
+  return ensure_types(root_dir).type_to_file[type_name] ~= nil
 end
 
 function M.get_type_file(root_dir, type_name)
-  local cache = get_cache(root_dir)
-  if not cache.type_to_file then
-    M.get_types(root_dir)
-    cache = get_cache(root_dir)
-  end
-
-  return cache.type_to_file[type_name]
+  return ensure_types(root_dir).type_to_file[type_name]
 end
 
-function M.get_names(root_dir, type_name)
-  local cache = get_cache(root_dir)
-  if cache.names[type_name] then
-    return cache.names[type_name]
-  end
-
-  local filename = M.get_type_file(root_dir, type_name)
-  if not filename then
-    return {}
+--- Parse a fixture YAML file in a single pass, extracting names, line numbers,
+--- and documentation blocks for each fixture entry.
+local function parse_fixture_file(filename)
+  local file = io.open(filename, 'r')
+  if not file then
+    return nil
   end
 
   local names = {}
-  local ok, _ = pcall(function()
-    local file = io.open(filename, 'r')
-    if not file then
-      return
-    end
+  local docs = {}
+  local lines = {}
 
+  local current_name = nil
+  local current_lines = nil
+  local indent_level = nil
+  local line_num = 0
+
+  local ok, _ = pcall(function()
     for line in file:lines() do
       local name = line:match('^([%w_]+):')
       if name then
-        table.insert(names, name)
-      end
-    end
-
-    file:close()
-  end)
-
-  if not ok then
-    return {}
-  end
-
-  cache.names[type_name] = names
-  return names
-end
-
-function M.get_documentation(root_dir, type_name, name)
-  local filename = M.get_type_file(root_dir, type_name)
-  if not filename then
-    return ''
-  end
-
-  local documentation = ''
-  local ok, _ = pcall(function()
-    local file = io.open(filename, 'r')
-    if not file then
-      return
-    end
-
-    local matched = false
-    local indent_level = nil
-
-    for line in file:lines() do
-      if not matched then
-        if line:match('^' .. name .. ':') then
-          matched = true
-          documentation = name .. ':\n'
-          indent_level = nil
+        -- Flush previous fixture
+        if current_name then
+          docs[current_name] = table.concat(current_lines, '\n')
         end
-      else
+        -- Start new fixture
+        table.insert(names, name)
+        lines[name] = line_num
+        current_name = name
+        current_lines = { line }
+        indent_level = nil
+      elseif current_name then
         if line == '' or line == '--' then
-          matched = false
+          -- End of fixture block
+          docs[current_name] = table.concat(current_lines, '\n')
+          current_name = nil
+          current_lines = nil
+          indent_level = nil
         elseif indent_level == nil then
           indent_level = line:match('^(%s+)')
           if indent_level and #indent_level > 0 then
-            documentation = documentation .. line .. '\n'
+            table.insert(current_lines, line)
           else
-            matched = false
+            docs[current_name] = table.concat(current_lines, '\n')
+            current_name = nil
+            current_lines = nil
+            indent_level = nil
           end
         else
           local current_indent = line:match('^(%s+)')
           if current_indent and #current_indent >= #indent_level then
-            documentation = documentation .. line .. '\n'
+            table.insert(current_lines, line)
           else
-            matched = false
+            docs[current_name] = table.concat(current_lines, '\n')
+            current_name = nil
+            current_lines = nil
+            indent_level = nil
           end
         end
       end
+      line_num = line_num + 1
     end
-
-    file:close()
   end)
 
+  file:close()
+
   if not ok then
-    return ''
+    return nil
   end
 
-  return documentation
+  -- Flush last fixture
+  if current_name then
+    docs[current_name] = table.concat(current_lines, '\n')
+  end
+
+  return { names = names, docs = docs, lines = lines }
 end
 
-function M.get_name_line(root_dir, type_name, name)
+local function ensure_parsed(root_dir, type_name)
+  local cache = get_cache(root_dir)
+  if cache.parsed[type_name] then
+    return cache.parsed[type_name]
+  end
+
   local filename = M.get_type_file(root_dir, type_name)
   if not filename then
     return nil
   end
 
-  local line_num = nil
-  local ok, _ = pcall(function()
-    local file = io.open(filename, 'r')
-    if not file then
-      return
-    end
-
-    local i = 0
-    for line in file:lines() do
-      if line:match('^' .. name .. ':') then
-        line_num = i
-        break
-      end
-      i = i + 1
-    end
-
-    file:close()
-  end)
-
-  if not ok then
+  local result = parse_fixture_file(filename)
+  if not result then
     return nil
   end
 
-  return line_num
+  cache.parsed[type_name] = result
+  return result
+end
+
+function M.get_names(root_dir, type_name)
+  local parsed = ensure_parsed(root_dir, type_name)
+  if not parsed then
+    return {}
+  end
+  return parsed.names
+end
+
+function M.get_documentation(root_dir, type_name, name)
+  local parsed = ensure_parsed(root_dir, type_name)
+  if not parsed or not parsed.docs[name] then
+    return ''
+  end
+  return parsed.docs[name] .. '\n'
+end
+
+function M.get_name_line(root_dir, type_name, name)
+  local parsed = ensure_parsed(root_dir, type_name)
+  if not parsed then
+    return nil
+  end
+  return parsed.lines[name]
 end
 
 return M

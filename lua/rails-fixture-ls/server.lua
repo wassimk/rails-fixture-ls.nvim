@@ -55,6 +55,11 @@ local function is_test_file(uri)
   return path:find('/test/') ~= nil or path:find('/spec/') ~= nil
 end
 
+local function get_line(params)
+  local bufnr = vim.uri_to_bufnr(params.textDocument.uri)
+  return vim.api.nvim_buf_get_lines(bufnr, params.position.line, params.position.line + 1, false)[1]
+end
+
 function M.create(dispatchers)
   local root_dir
   local closing = false
@@ -76,8 +81,7 @@ function M.create(dispatchers)
       return callback(nil, { isIncomplete = false, items = {} })
     end
 
-    local bufnr = vim.uri_to_bufnr(params.textDocument.uri)
-    local line = vim.api.nvim_buf_get_lines(bufnr, params.position.line, params.position.line + 1, false)[1]
+    local line = get_line(params)
     if not line then
       return callback(nil, { isIncomplete = false, items = {} })
     end
@@ -143,8 +147,7 @@ function M.create(dispatchers)
       return callback(nil, nil)
     end
 
-    local bufnr = vim.uri_to_bufnr(params.textDocument.uri)
-    local line = vim.api.nvim_buf_get_lines(bufnr, params.position.line, params.position.line + 1, false)[1]
+    local line = get_line(params)
     if not line then
       return callback(nil, nil)
     end
@@ -198,8 +201,7 @@ function M.create(dispatchers)
       return callback(nil, nil)
     end
 
-    local bufnr = vim.uri_to_bufnr(params.textDocument.uri)
-    local line = vim.api.nvim_buf_get_lines(bufnr, params.position.line, params.position.line + 1, false)[1]
+    local line = get_line(params)
     if not line then
       return callback(nil, nil)
     end
