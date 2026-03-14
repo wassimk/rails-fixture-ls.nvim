@@ -58,23 +58,11 @@ Type completions and name completions are triggered automatically as you type.
 
 ## ⚙️ Configuration
 
-The default LSP configuration:
+No configuration is required. The server activates automatically for Ruby files
+in projects containing `test/fixtures/` or `spec/fixtures/`.
 
-```lua
-{
-  filetypes = { 'ruby' },
-  root_markers = { 'Gemfile', 'Rakefile', '.git' },
-}
-```
-
-Override via `vim.lsp.config()` before enabling:
-
-```lua
-vim.lsp.config('rails_fixture_ls', {
-  root_markers = { 'Gemfile' },
-})
-vim.lsp.enable('rails_fixture_ls')
-```
+The project root is detected by looking for `Gemfile`, `Rakefile`, or `.git`.
+If no fixture directory exists under the root, the server does not start.
 
 ## 🔍 How It Works
 
@@ -83,9 +71,10 @@ spawning an external process, it passes a Lua function as the `cmd` parameter
 to `vim.lsp.start()`. That function returns a dispatch table implementing the
 LSP protocol entirely in Lua within your Neovim session.
 
-The server activates for Ruby files in projects with a `Gemfile`, `Rakefile`,
-or `.git` directory. Fixture data is cached per project root, so multi-project
-workspaces are fully supported.
+The server only activates for Ruby files in projects that have a
+`test/fixtures/` or `spec/fixtures/` directory. If no fixture directory is
+found, the server does not start at all. Fixture data is cached per project
+root, so multi-project workspaces are fully supported.
 
 Fixture YAML files are parsed with simple pattern matching. Files using ERB
 (`.yml` with embedded `<%= %>` tags) work correctly since ERB only appears in
