@@ -18,16 +18,13 @@ Install via your preferred plugin manager. The following example uses [lazy.nvim
 ```lua
 {
   'wassimk/rails-fixture-ls.nvim',
+  version = '*',
   ft = 'ruby',
   config = function()
     vim.lsp.enable('rails_fixture_ls')
   end,
 }
 ```
-
-> [!IMPORTANT]
-> This plugin is actively developed on the `main` branch. I recommend using
-> versioned releases with the *version* key to avoid unexpected breaking changes.
 
 ## 💻 Features
 
