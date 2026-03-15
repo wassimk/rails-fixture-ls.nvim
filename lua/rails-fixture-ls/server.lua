@@ -68,7 +68,7 @@ function M.create(dispatchers)
   local methods = {}
 
   function methods.initialize(params, callback)
-    root_dir = params.rootUri and vim.uri_to_fname(params.rootUri) or nil
+    root_dir = type(params.rootUri) == 'string' and vim.uri_to_fname(params.rootUri) or nil
     return callback(nil, { capabilities = capabilities })
   end
 
