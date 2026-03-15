@@ -1,5 +1,7 @@
 # rails-fixture-ls.nvim
 
+![demo](demo.gif)
+
 An in-process Neovim LSP server for Rails test fixture completion, hover, and
 go-to-definition. Runs entirely as Lua inside your Neovim session with no
 external process.
