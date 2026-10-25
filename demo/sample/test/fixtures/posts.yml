@@ -1,0 +1,11 @@
+welcome:
+  title: Welcome to the blog
+  body: Thanks for stopping by.
+  user: alice
+  published: true
+
+draft:
+  title: Work in progress
+  body: Coming soon.
+  user: bob
+  published: false
